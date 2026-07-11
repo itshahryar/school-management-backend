@@ -1,4 +1,4 @@
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const validate = require('../../../middleware/validate');
 const { ASSIGNABLE_ROLES, ROLE_VALUES } = require('../../../constants/roles');
 
@@ -78,9 +78,38 @@ const changePasswordValidation = [
   validate,
 ];
 
+const listUsersValidation = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('page must be a positive integer')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('limit must be between 1 and 100')
+    .toInt(),
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('search must be at most 100 characters'),
+  query('role')
+    .optional()
+    .trim()
+    .isIn(ROLE_VALUES)
+    .withMessage(`role must be one of: ${ROLE_VALUES.join(', ')}`),
+  query('isActive')
+    .optional()
+    .isIn(['true', 'false'])
+    .withMessage('isActive must be true or false'),
+  validate,
+];
+
 module.exports = {
   setupOwnerValidation,
   createUserValidation,
+  listUsersValidation,
   loginValidation,
   forgotPasswordValidation,
   resetPasswordValidation,

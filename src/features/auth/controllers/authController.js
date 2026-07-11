@@ -36,6 +36,24 @@ const createUser = asyncHandler(async (req, res) => {
   });
 });
 
+const listUsers = asyncHandler(async (req, res) => {
+  const { page, limit, search, role, isActive } = req.query;
+
+  let parsedIsActive;
+  if (isActive === 'true') parsedIsActive = true;
+  if (isActive === 'false') parsedIsActive = false;
+
+  const result = await authService.listUsers({
+    page,
+    limit,
+    search,
+    role,
+    isActive: parsedIsActive,
+  });
+
+  return success(res, { data: result });
+});
+
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const { user, token } = await authService.loginUser(email, password);
@@ -85,6 +103,7 @@ const logout = asyncHandler(async (req, res) => {
 module.exports = {
   setupOwner,
   createUser,
+  listUsers,
   login,
   getCurrentUser,
   forgotPassword,

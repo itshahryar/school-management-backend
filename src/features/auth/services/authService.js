@@ -183,9 +183,70 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   return { message: 'Password changed successfully' };
 };
 
+/**
+ * List users with server-side pagination, search, and filters.
+ * @param {{ page?: number, limit?: number, search?: string, role?: string, isActive?: boolean }} params
+ */
+const listUsers = async ({
+  page = 1,
+  limit = 10,
+  search,
+  role,
+  isActive,
+} = {}) => {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 10));
+  const skip = (safePage - 1) * safeLimit;
+
+  const where = {};
+
+  if (search?.trim()) {
+    const term = search.trim();
+    where.OR = [
+      { email: { contains: term, mode: 'insensitive' } },
+      { firstName: { contains: term, mode: 'insensitive' } },
+      { lastName: { contains: term, mode: 'insensitive' } },
+    ];
+  }
+
+  if (role) {
+    where.role = role;
+  }
+
+  if (typeof isActive === 'boolean') {
+    where.isActive = isActive;
+  }
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: USER_PUBLIC_SELECT,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: safeLimit,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+
+  return {
+    users,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages,
+      hasNextPage: safePage < totalPages,
+      hasPrevPage: safePage > 1,
+    },
+  };
+};
+
 module.exports = {
   setupOwner,
   createUser,
+  listUsers,
   loginUser,
   getCurrentUser,
   forgotPassword,

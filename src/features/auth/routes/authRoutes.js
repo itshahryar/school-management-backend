@@ -4,6 +4,7 @@ const authController = require('../controllers/authController');
 const {
   setupOwnerValidation,
   createUserValidation,
+  listUsersValidation,
   loginValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
@@ -54,6 +55,13 @@ router.post(
 router.post('/logout', authenticate, authController.logout);
 
 // Owner
+router.get(
+  '/users',
+  authenticate,
+  ownerOnly,
+  listUsersValidation,
+  authController.listUsers
+);
 router.post(
   '/users',
   authenticate,
