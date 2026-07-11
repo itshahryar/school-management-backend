@@ -1,25 +1,25 @@
-const { verifyAccessToken } = require('../utils/jwt');
+const { verifyToken } = require('../utils/jwt');
 const prisma = require('../lib/prisma');
+const { fail } = require('../utils/response');
 
 /**
- * Authentication middleware - verifies JWT token and attaches user to request
+ * Verifies JWT from HttpOnly cookie (or Authorization Bearer) and attaches user.
  */
 const authenticate = async (req, res, next) => {
   try {
-    // Get token from cookie or authorization header
-    const token = req.cookies.accessToken || req.headers.authorization?.replace('Bearer ', '');
-    
+    const token =
+      req.cookies?.token ||
+      req.headers.authorization?.replace(/^Bearer\s+/i, '');
+
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access denied. No token provided.'
+      return fail(res, {
+        statusCode: 401,
+        message: 'Access denied. No token provided.',
       });
     }
 
-    // Verify token
-    const decoded = verifyAccessToken(token);
-    
-    // Check if user still exists and is active
+    const decoded = verifyToken(token);
+
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -29,92 +29,35 @@ const authenticate = async (req, res, next) => {
         lastName: true,
         role: true,
         isActive: true,
-        emailVerified: true
-      }
+        emailVerified: true,
+      },
     });
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found.'
-      });
+      return fail(res, { statusCode: 401, message: 'User not found.' });
     }
 
     if (!user.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: 'Account is deactivated.'
+      return fail(res, {
+        statusCode: 403,
+        message: 'Account is deactivated.',
       });
     }
 
-    // Attach user to request
     req.user = user;
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token.'
-      });
+      return fail(res, { statusCode: 401, message: 'Invalid token.' });
     }
-    
+
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expired.'
-      });
+      return fail(res, { statusCode: 401, message: 'Token expired.' });
     }
 
     console.error('Authentication error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Authentication failed.'
-    });
+    return fail(res, { statusCode: 500, message: 'Authentication failed.' });
   }
 };
 
-/**
- * Optional authentication - attaches user if token exists, but doesn't require it
- */
-const optionalAuth = async (req, res, next) => {
-  try {
-    const token = req.cookies.accessToken || req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
-      req.user = null;
-      return next();
-    }
-
-    const decoded = verifyAccessToken(token);
-    
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        emailVerified: true
-      }
-    });
-
-    if (user && user.isActive) {
-      req.user = user;
-    } else {
-      req.user = null;
-    }
-
-    next();
-  } catch (error) {
-    // If token is invalid, just continue without user
-    req.user = null;
-    next();
-  }
-};
-
-module.exports = {
-  authenticate,
-  optionalAuth
-};
+module.exports = { authenticate };

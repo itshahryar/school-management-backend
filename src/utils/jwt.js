@@ -1,69 +1,33 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'your-access-secret-key';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
-const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
-const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRY = process.env.JWT_EXPIRY || '1d';
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 /**
- * Generate access token
- * @param {Object} payload - User data to encode
- * @returns {String} JWT access token
+ * Generate a signed JWT access token.
+ * @param {Object} payload
+ * @returns {String}
  */
-const generateAccessToken = (payload) => {
-  return jwt.sign(payload, JWT_ACCESS_SECRET, {
-    expiresIn: JWT_ACCESS_EXPIRY
+const generateToken = (payload) => {
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRY,
   });
 };
 
 /**
- * Generate refresh token
- * @param {Object} payload - User data to encode
- * @returns {String} JWT refresh token
+ * Verify and decode a JWT access token.
+ * @param {String} token
+ * @returns {Object}
  */
-const generateRefreshToken = (payload) => {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, {
-    expiresIn: JWT_REFRESH_EXPIRY
-  });
-};
-
-/**
- * Verify access token
- * @param {String} token - JWT access token
- * @returns {Object} Decoded token payload
- */
-const verifyAccessToken = (token) => {
-  return jwt.verify(token, JWT_ACCESS_SECRET);
-};
-
-/**
- * Verify refresh token
- * @param {String} token - JWT refresh token
- * @returns {Object} Decoded token payload
- */
-const verifyRefreshToken = (token) => {
-  return jwt.verify(token, JWT_REFRESH_SECRET);
-};
-
-/**
- * Generate both access and refresh tokens
- * @param {Object} payload - User data to encode
- * @returns {Object} Object containing access and refresh tokens
- */
-const generateTokens = (payload) => {
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload);
-  
-  return {
-    accessToken,
-    refreshToken
-  };
+const verifyToken = (token) => {
+  return jwt.verify(token, JWT_SECRET);
 };
 
 module.exports = {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyAccessToken,
-  verifyRefreshToken,
-  generateTokens
+  generateToken,
+  verifyToken,
 };
