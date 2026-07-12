@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// School Management System — PostgreSQL (Neon)
+// Focus: academic hierarchy, question bank, chapter notes, paper generation + history
 
 generator client {
   provider = "prisma-client-js"
@@ -9,29 +9,370 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
 enum Role {
   OWNER
   ADMIN
-  TEACHER
-  STUDENT
-  PARENT
 }
 
+/// CHAPTER = top-level under a subject (notes attach here only).
+/// SECTION = topic / sub-topic / any deeper nested level.
+enum ContentNodeType {
+  CHAPTER
+  SECTION
+}
+
+enum QuestionType {
+  MCQ
+  SHORT_ANSWER
+  LONG_ANSWER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// ─────────────────────────────────────────────
+// Auth
+// ─────────────────────────────────────────────
+
 model User {
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  password               String
+  firstName              String
+  lastName               String
+  role                   Role
+  isActive               Boolean   @default(true)
+  emailVerified          Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  lastLoginAt            DateTime?
+  passwordResetToken     String?
+  passwordResetExpiresAt DateTime?
+
+  createdClasses   Class[]         @relation("ClassCreatedBy")
+  createdSubjects  Subject[]       @relation("SubjectCreatedBy")
+  createdNodes     ContentNode[]   @relation("ContentNodeCreatedBy")
+  createdQuestions Question[]      @relation("QuestionCreatedBy")
+  createdNotes     Note[]          @relation("NoteCreatedBy")
+  createdTests     Test[]          @relation("TestCreatedBy")
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// Academic hierarchy: Class → Subject → Content
+// ContentNode uses adjacency list for unlimited nesting:
+//   Subject → Chapter → Topic → Sub-topic → …
+// ─────────────────────────────────────────────
+
+model Class {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+
+  createdBy User?     @relation("ClassCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  subjects  Subject[]
+  tests     Test[]
+
+  @@unique([name])
+  @@index([isActive, sortOrder])
+  @@map("classes")
+}
+
+model Subject {
+  id          String   @id @default(uuid())
+  classId     String
+  name        String
+  code        String?
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+
+  class      Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy  User?         @relation("SubjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  nodes      ContentNode[]
+  tests      Test[]
+
+  @@unique([classId, name])
+  @@index([classId, isActive, sortOrder])
+  @@map("subjects")
+}
+
+/// Tree node under a subject.
+/// parentId = null  → chapter (ContentNodeType.CHAPTER)
+/// parentId set     → topic / sub-topic / deeper (ContentNodeType.SECTION)
+model ContentNode {
+  id          String          @id @default(uuid())
+  subjectId   String
+  parentId    String?
+  type        ContentNodeType
+  title       String
+  description String?
+  sortOrder   Int             @default(0)
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdById String?
+
+  subject   Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  parent    ContentNode? @relation("ContentTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  ContentNode[] @relation("ContentTree")
+  createdBy User?        @relation("ContentNodeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  questions Question[]
+  notes     Note[]
+
+  /// Content sections selected when building a test
+  testSources TestSource[]
+
+  @@index([subjectId, parentId, sortOrder])
+  @@index([subjectId, type, isActive])
+  @@index([parentId])
+  @@map("content_nodes")
+}
+
+// ─────────────────────────────────────────────
+// Chapter notes (PDF) — chapter-level only
+// App must enforce: Note.contentNode.type === CHAPTER
+// ─────────────────────────────────────────────
+
+model Note {
   id            String   @id @default(uuid())
-  email         String   @unique
-  password      String
-  firstName     String
-  lastName      String
-  role          Role
+  contentNodeId String
+  title         String
+  /// Storage key / public URL (S3, local uploads, etc.)
+  fileUrl       String
+  fileName      String
+  mimeType      String   @default("application/pdf")
+  fileSizeBytes Int?
+  sortOrder     Int      @default(0)
   isActive      Boolean  @default(true)
-  emailVerified Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  lastLoginAt   DateTime?
-  
-  passwordResetToken      String?
-  passwordResetExpiresAt  DateTime?
-  
-  @@map("users")
+  createdById   String?
+
+  contentNode ContentNode @relation(fields: [contentNodeId], references: [id], onDelete: Cascade)
+  createdBy   User?       @relation("NoteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([contentNodeId, isActive, sortOrder])
+  @@map("notes")
+}
+
+// ─────────────────────────────────────────────
+// Question bank (attach to any content node)
+// ─────────────────────────────────────────────
+
+model Question {
+  id                  String       @id @default(uuid())
+  contentNodeId       String
+  type                QuestionType
+  difficulty          Difficulty   @default(MEDIUM)
+  /// Question stem / prompt
+  text                String
+  marks               Decimal      @db.Decimal(6, 2)
+  /// MCQ only: false = single correct, true = multiple correct
+  allowMultipleCorrect Boolean     @default(false)
+  explanation         String?
+  sortOrder           Int          @default(0)
+  isActive            Boolean      @default(true)
+  /// How many generated papers included this question
+  timesUsed           Int          @default(0)
+  lastUsedAt          DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  createdById         String?
+
+  contentNode ContentNode  @relation(fields: [contentNodeId], references: [id], onDelete: Cascade)
+  createdBy   User?        @relation("QuestionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  options     McqOption[]
+  /// Soft link back to snapshot rows (optional; snapshot remains if question deleted)
+  testItems   TestQuestion[]
+
+  @@index([contentNodeId, type, difficulty, isActive])
+  @@index([type, difficulty, isActive])
+  @@index([timesUsed])
+  @@map("questions")
+}
+
+model McqOption {
+  id         String   @id @default(uuid())
+  questionId String
+  text       String
+  isCorrect  Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, sortOrder])
+  @@map("mcq_options")
+}
+
+// ─────────────────────────────────────────────
+// Configurable test metadata
+// ─────────────────────────────────────────────
+
+model TestType {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String?  @unique
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tests Test[]
+
+  @@index([isActive, sortOrder])
+  @@map("test_types")
+}
+
+model TestStatus {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tests Test[]
+
+  @@index([isActive, sortOrder])
+  @@map("test_statuses")
+}
+
+// ─────────────────────────────────────────────
+// Generated question papers (+ history)
+// ─────────────────────────────────────────────
+
+model Test {
+  id              String    @id @default(uuid())
+  title           String
+  description     String?
+  instructions    String?
+  classId         String?
+  subjectId       String?
+  testTypeId      String
+  testStatusId    String
+  /// Sum of snapshot question marks (set at generation time)
+  totalMarks      Decimal   @db.Decimal(8, 2) @default(0)
+  durationMinutes Int?
+  /// When the paper was generated from the bank
+  generatedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String?
+
+  class      Class?      @relation(fields: [classId], references: [id], onDelete: SetNull)
+  subject    Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  testType   TestType    @relation(fields: [testTypeId], references: [id], onDelete: Restrict)
+  testStatus TestStatus  @relation(fields: [testStatusId], references: [id], onDelete: Restrict)
+  createdBy  User?       @relation("TestCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  /// Which content sections fed this paper
+  sources TestSource[]
+  /// Generation rules used (type × difficulty × count)
+  rules   TestGenerationRule[]
+  /// Immutable snapshot of the paper
+  questions TestQuestion[]
+
+  @@index([createdById, createdAt])
+  @@index([classId, subjectId])
+  @@index([testTypeId, testStatusId])
+  @@index([generatedAt])
+  @@map("tests")
+}
+
+/// Content nodes the user selected before generation
+model TestSource {
+  id            String   @id @default(uuid())
+  testId        String
+  contentNodeId String
+  createdAt     DateTime @default(now())
+
+  test        Test        @relation(fields: [testId], references: [id], onDelete: Cascade)
+  contentNode ContentNode @relation(fields: [contentNodeId], references: [id], onDelete: Restrict)
+
+  @@unique([testId, contentNodeId])
+  @@index([contentNodeId])
+  @@map("test_sources")
+}
+
+/// Configurable pick rules, e.g. "5 MEDIUM MCQs", "2 HARD LONG_ANSWER"
+model TestGenerationRule {
+  id           String       @id @default(uuid())
+  testId       String
+  questionType QuestionType
+  difficulty   Difficulty
+  count        Int
+  /// Optional per-rule mark override applied when generating
+  marksEach    Decimal?     @db.Decimal(6, 2)
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@index([testId, sortOrder])
+  @@map("test_generation_rules")
+}
+
+/// Frozen question row — survives edits/deletes in the live bank
+model TestQuestion {
+  id                   String       @id @default(uuid())
+  testId               String
+  /// Original bank question (nullable if later deleted)
+  questionId           String?
+  sortOrder            Int          @default(0)
+  questionType         QuestionType
+  difficulty           Difficulty
+  text                 String
+  marks                Decimal      @db.Decimal(6, 2)
+  allowMultipleCorrect Boolean      @default(false)
+  explanation          String?
+  /// Breadcrumb snapshot, e.g. "Chapter 1 > Topic 2 > Sub-topic A"
+  sourcePath           String?
+  createdAt            DateTime     @default(now())
+
+  test     Test                 @relation(fields: [testId], references: [id], onDelete: Cascade)
+  question Question?            @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  options  TestQuestionOption[]
+
+  @@index([testId, sortOrder])
+  @@index([questionId])
+  @@map("test_questions")
+}
+
+/// Frozen MCQ options for a paper question
+model TestQuestionOption {
+  id             String   @id @default(uuid())
+  testQuestionId String
+  text           String
+  isCorrect      Boolean  @default(false)
+  sortOrder      Int      @default(0)
+
+  testQuestion TestQuestion @relation(fields: [testQuestionId], references: [id], onDelete: Cascade)
+
+  @@index([testQuestionId, sortOrder])
+  @@map("test_question_options")
 }

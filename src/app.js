@@ -8,6 +8,13 @@ const cookieParser = require('cookie-parser');
 const compression = require('compression');
 
 const authRoutes = require('./features/auth/routes/authRoutes');
+const classRoutes = require('./features/classes/routes/classRoutes');
+const subjectRoutes = require('./features/subjects/routes/subjectRoutes');
+const contentNodeRoutes = require('./features/contentNodes/routes/contentNodeRoutes');
+const noteRoutes = require('./features/notes/routes/noteRoutes');
+const questionRoutes = require('./features/questions/routes/questionRoutes');
+const testMetaRoutes = require('./features/testMeta/routes/testMetaRoutes');
+const testRoutes = require('./features/tests/routes/testRoutes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 const { success } = require('./utils/response');
 
@@ -46,6 +53,13 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/content-nodes', contentNodeRoutes);
+app.use('/api/notes', noteRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/test-meta', testMetaRoutes);
+app.use('/api/tests', testRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

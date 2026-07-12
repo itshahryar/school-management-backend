@@ -16,6 +16,20 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  if (err.code === 'P2003') {
+    return fail(res, {
+      statusCode: 400,
+      message: 'Related record not found or cannot be modified.',
+    });
+  }
+
+  if (err.code === 'P2025') {
+    return fail(res, {
+      statusCode: 404,
+      message: 'Record not found.',
+    });
+  }
+
   if (err.name === 'JsonWebTokenError') {
     return fail(res, { statusCode: 401, message: 'Invalid token.' });
   }
