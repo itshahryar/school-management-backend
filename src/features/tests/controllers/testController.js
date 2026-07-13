@@ -3,12 +3,12 @@ const { success } = require('../../../utils/response');
 const asyncHandler = require('../../../utils/asyncHandler');
 
 const listTests = asyncHandler(async (req, res) => {
-  const result = await testService.listTests(req.query);
+  const result = await testService.listTests(req.query, req.user.id);
   return success(res, { data: result });
 });
 
 const getTest = asyncHandler(async (req, res) => {
-  const test = await testService.getTestById(req.params.id);
+  const test = await testService.getTestById(req.params.id, req.user.id);
   return success(res, { data: { test } });
 });
 
@@ -31,7 +31,11 @@ const createManualTest = asyncHandler(async (req, res) => {
 });
 
 const replaceTestQuestions = asyncHandler(async (req, res) => {
-  const test = await testService.replaceTestQuestions(req.params.id, req.body);
+  const test = await testService.replaceTestQuestions(
+    req.params.id,
+    req.body,
+    req.user.id
+  );
   return success(res, {
     message: 'Paper questions updated',
     data: { test },
@@ -39,7 +43,11 @@ const replaceTestQuestions = asyncHandler(async (req, res) => {
 });
 
 const transitionTest = asyncHandler(async (req, res) => {
-  const test = await testService.transitionTest(req.params.id, req.body.action);
+  const test = await testService.transitionTest(
+    req.params.id,
+    req.body.action,
+    req.user.id
+  );
   return success(res, {
     message:
       req.body.action === 'publish'
@@ -50,7 +58,11 @@ const transitionTest = asyncHandler(async (req, res) => {
 });
 
 const updateTest = asyncHandler(async (req, res) => {
-  const test = await testService.updateTest(req.params.id, req.body);
+  const test = await testService.updateTest(
+    req.params.id,
+    req.body,
+    req.user.id
+  );
   return success(res, {
     message: 'Test updated successfully',
     data: { test },
@@ -58,7 +70,7 @@ const updateTest = asyncHandler(async (req, res) => {
 });
 
 const deleteTest = asyncHandler(async (req, res) => {
-  await testService.deleteTest(req.params.id);
+  await testService.deleteTest(req.params.id, req.user.id);
   return success(res, { message: 'Test deleted successfully' });
 });
 

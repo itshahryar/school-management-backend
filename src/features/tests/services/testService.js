@@ -93,9 +93,11 @@ const testDetailSelect = {
   },
 };
 
-const listTests = async (query = {}) => {
+const listTests = async (query = {}, userId) => {
   const { page, limit, skip } = parsePagination(query);
-  const where = {};
+  const where = {
+    createdById: userId,
+  };
 
   if (query.search?.trim()) {
     where.title = { contains: query.search.trim(), mode: 'insensitive' };
@@ -104,7 +106,6 @@ const listTests = async (query = {}) => {
   if (query.subjectId) where.subjectId = query.subjectId;
   if (query.testTypeId) where.testTypeId = query.testTypeId;
   if (query.testStatusId) where.testStatusId = query.testStatusId;
-  if (query.createdById) where.createdById = query.createdById;
 
   const [tests, total] = await Promise.all([
     prisma.test.findMany({
@@ -120,9 +121,9 @@ const listTests = async (query = {}) => {
   return { tests, pagination: buildPaginationMeta(total, page, limit) };
 };
 
-const getTestById = async (id) => {
-  const test = await prisma.test.findUnique({
-    where: { id },
+const getTestById = async (id, userId) => {
+  const test = await prisma.test.findFirst({
+    where: { id, createdById: userId },
     select: testDetailSelect,
   });
   if (!test) throw new AppError('Test not found', 404);
@@ -350,7 +351,7 @@ const generateTest = async (payload, createdById) => {
     return created;
   });
 
-  return getTestById(test.id);
+  return getTestById(test.id, createdById);
 };
 
 const assertDraft = (test) => {
@@ -528,11 +529,11 @@ const createManualTest = async (payload, createdById) => {
     select: { id: true },
   });
 
-  return getTestById(created.id);
+  return getTestById(created.id, createdById);
 };
 
-const replaceTestQuestions = async (id, payload) => {
-  const existing = await getTestById(id);
+const replaceTestQuestions = async (id, payload, userId) => {
+  const existing = await getTestById(id, userId);
   assertDraft(existing);
 
   const items = payload.questions?.length
@@ -620,11 +621,11 @@ const replaceTestQuestions = async (id, payload) => {
     }
   );
 
-  return getTestById(id);
+  return getTestById(id, userId);
 };
 
-const transitionTest = async (id, action) => {
-  const existing = await getTestById(id);
+const transitionTest = async (id, action, userId) => {
+  const existing = await getTestById(id, userId);
   const code = existing.testStatus?.code;
   const now = new Date();
 
@@ -679,7 +680,7 @@ const transitionTest = async (id, action) => {
       }
     );
 
-    return getTestById(id);
+    return getTestById(id, userId);
   }
 
   if (action === 'publish') {
@@ -691,14 +692,14 @@ const transitionTest = async (id, action) => {
       where: { id },
       data: { testStatusId: published.id },
     });
-    return getTestById(id);
+    return getTestById(id, userId);
   }
 
   throw new AppError('Invalid action. Use finalize or publish', 400);
 };
 
-const updateTest = async (id, data) => {
-  const existing = await getTestById(id);
+const updateTest = async (id, data, userId) => {
+  const existing = await getTestById(id, userId);
 
   const touchesContent =
     data.title !== undefined ||
@@ -741,11 +742,11 @@ const updateTest = async (id, data) => {
     },
   });
 
-  return getTestById(id);
+  return getTestById(id, userId);
 };
 
-const deleteTest = async (id) => {
-  await getTestById(id);
+const deleteTest = async (id, userId) => {
+  await getTestById(id, userId);
   await prisma.test.delete({ where: { id } });
   return { id };
 };

@@ -12,7 +12,6 @@ const listTestsValidation = [
   query('subjectId').optional().isUUID(),
   query('testTypeId').optional().isUUID(),
   query('testStatusId').optional().isUUID(),
-  query('createdById').optional().isUUID(),
   validate,
 ];
 

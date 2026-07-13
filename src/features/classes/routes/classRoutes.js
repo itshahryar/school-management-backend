@@ -7,11 +7,11 @@ const {
   updateClassValidation,
 } = require('../validations/classValidation');
 const { authenticate } = require('../../../middleware/auth');
-const { ownerOnly } = require('../../../middleware/authorization');
+const { adminOrHigher } = require('../../../middleware/authorization');
 
 const router = express.Router();
 
-router.use(authenticate, ownerOnly);
+router.use(authenticate, adminOrHigher);
 
 router.get('/', listClassesValidation, classController.listClasses);
 router.post('/', createClassValidation, classController.createClass);
