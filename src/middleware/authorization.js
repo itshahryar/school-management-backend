@@ -24,11 +24,34 @@ const authorize = (...allowedRoles) => {
   };
 };
 
+/**
+ * Blocks inactive accounts from business APIs. Allow /me and /logout without this.
+ */
+const requireActive = (req, res, next) => {
+  if (!req.user) {
+    return fail(res, {
+      statusCode: 401,
+      message: 'Authentication required.',
+    });
+  }
+
+  if (!req.user.isActive) {
+    return fail(res, {
+      statusCode: 403,
+      message: 'Account is deactivated.',
+      code: 'ACCOUNT_INACTIVE',
+    });
+  }
+
+  next();
+};
+
 const ownerOnly = authorize(ROLES.OWNER);
 const adminOrHigher = authorize(ROLES.OWNER, ROLES.ADMIN);
 
 module.exports = {
   authorize,
+  requireActive,
   ownerOnly,
   adminOrHigher,
 };

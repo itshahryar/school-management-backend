@@ -7,11 +7,11 @@ const {
   updateSubjectValidation,
 } = require('../validations/subjectValidation');
 const { authenticate } = require('../../../middleware/auth');
-const { adminOrHigher } = require('../../../middleware/authorization');
+const { adminOrHigher, requireActive } = require('../../../middleware/authorization');
 
 const router = express.Router();
 
-router.use(authenticate, adminOrHigher);
+router.use(authenticate, requireActive, adminOrHigher);
 
 router.get('/', listSubjectsValidation, subjectController.listSubjects);
 router.post('/', createSubjectValidation, subjectController.createSubject);

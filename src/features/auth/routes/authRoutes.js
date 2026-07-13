@@ -4,6 +4,7 @@ const authController = require('../controllers/authController');
 const {
   setupOwnerValidation,
   createUserValidation,
+  updateUserValidation,
   listUsersValidation,
   loginValidation,
   forgotPasswordValidation,
@@ -11,7 +12,10 @@ const {
   changePasswordValidation,
 } = require('../validations/authValidation');
 const { authenticate } = require('../../../middleware/auth');
-const { ownerOnly } = require('../../../middleware/authorization');
+const {
+  ownerOnly,
+  requireActive,
+} = require('../../../middleware/authorization');
 
 const router = express.Router();
 
@@ -44,20 +48,22 @@ router.post(
   authController.setupOwner
 );
 
-// Authenticated
+// Authenticated (inactive users may reach /me and /logout)
 router.get('/me', authenticate, authController.getCurrentUser);
+router.post('/logout', authenticate, authController.logout);
 router.post(
   '/change-password',
   authenticate,
+  requireActive,
   changePasswordValidation,
   authController.changePassword
 );
-router.post('/logout', authenticate, authController.logout);
 
 // Owner
 router.get(
   '/users',
   authenticate,
+  requireActive,
   ownerOnly,
   listUsersValidation,
   authController.listUsers
@@ -65,9 +71,18 @@ router.get(
 router.post(
   '/users',
   authenticate,
+  requireActive,
   ownerOnly,
   createUserValidation,
   authController.createUser
+);
+router.patch(
+  '/users/:id',
+  authenticate,
+  requireActive,
+  ownerOnly,
+  updateUserValidation,
+  authController.updateUser
 );
 
 module.exports = router;

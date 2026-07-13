@@ -3,7 +3,7 @@ const prisma = require('../../../lib/prisma');
 const { hashPassword, comparePassword } = require('../../../utils/password');
 const { generateToken } = require('../../../utils/jwt');
 const AppError = require('../../../utils/AppError');
-const { ROLES } = require('../../../constants/roles');
+const { ROLES, ASSIGNABLE_ROLES } = require('../../../constants/roles');
 
 const USER_PUBLIC_SELECT = {
   id: true,
@@ -74,10 +74,6 @@ const loginUser = async (email, password) => {
 
   if (!user || !(await comparePassword(password, user.password))) {
     throw new AppError('Invalid credentials', 401);
-  }
-
-  if (!user.isActive) {
-    throw new AppError('Account is deactivated', 403);
   }
 
   const updatedUser = await prisma.user.update({
@@ -243,10 +239,69 @@ const listUsers = async ({
   };
 };
 
+/**
+ * Owner updates another user's details. Owner accounts cannot be deactivated.
+ */
+const updateUser = async (id, payload) => {
+  const existing = await prisma.user.findUnique({ where: { id } });
+  if (!existing) {
+    throw new AppError('User not found', 404);
+  }
+
+  if (
+    existing.role === ROLES.OWNER &&
+    payload.isActive !== undefined &&
+    payload.isActive === false
+  ) {
+    throw new AppError('Owner account cannot be set to inactive', 400);
+  }
+
+  if (payload.role !== undefined) {
+    if (existing.role === ROLES.OWNER && payload.role !== ROLES.OWNER) {
+      throw new AppError('Owner role cannot be changed', 400);
+    }
+    if (existing.role !== ROLES.OWNER && !ASSIGNABLE_ROLES.includes(payload.role)) {
+      throw new AppError(
+        `Role must be one of: ${ASSIGNABLE_ROLES.join(', ')}`,
+        400
+      );
+    }
+  }
+
+  if (payload.email && payload.email !== existing.email) {
+    await ensureEmailAvailable(payload.email);
+  }
+
+  const data = {};
+  if (payload.firstName !== undefined) data.firstName = payload.firstName.trim();
+  if (payload.lastName !== undefined) data.lastName = payload.lastName.trim();
+  if (payload.email !== undefined) data.email = payload.email.trim().toLowerCase();
+  if (payload.role !== undefined && existing.role !== ROLES.OWNER) {
+    data.role = payload.role;
+  }
+  if (payload.isActive !== undefined && existing.role !== ROLES.OWNER) {
+    data.isActive = Boolean(payload.isActive);
+  }
+  if (payload.password) {
+    data.password = await hashPassword(payload.password);
+  }
+
+  if (!Object.keys(data).length) {
+    throw new AppError('No changes provided', 400);
+  }
+
+  return prisma.user.update({
+    where: { id },
+    data,
+    select: USER_PUBLIC_SELECT,
+  });
+};
+
 module.exports = {
   setupOwner,
   createUser,
   listUsers,
+  updateUser,
   loginUser,
   getCurrentUser,
   forgotPassword,

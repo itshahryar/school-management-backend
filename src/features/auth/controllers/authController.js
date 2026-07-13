@@ -54,6 +54,14 @@ const listUsers = asyncHandler(async (req, res) => {
   return success(res, { data: result });
 });
 
+const updateUser = asyncHandler(async (req, res) => {
+  const user = await authService.updateUser(req.params.id, req.body);
+  return success(res, {
+    message: 'User updated successfully',
+    data: { user },
+  });
+});
+
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const { user, token } = await authService.loginUser(email, password);
@@ -104,6 +112,7 @@ module.exports = {
   setupOwner,
   createUser,
   listUsers,
+  updateUser,
   login,
   getCurrentUser,
   forgotPassword,

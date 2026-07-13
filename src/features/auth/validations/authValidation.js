@@ -1,9 +1,19 @@
-const { body, query } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const validate = require('../../../middleware/validate');
 const { ASSIGNABLE_ROLES, ROLE_VALUES } = require('../../../constants/roles');
 
 const passwordRules = (field = 'password') =>
   body(field)
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage(
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    );
+
+const optionalPasswordRules = (field = 'password') =>
+  body(field)
+    .optional({ values: 'falsy' })
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
@@ -53,6 +63,29 @@ const createUserValidation = [
     .withMessage('Role is required')
     .isIn(ASSIGNABLE_ROLES)
     .withMessage(`Role must be one of: ${ASSIGNABLE_ROLES.join(', ')}`),
+  validate,
+];
+
+const updateUserValidation = [
+  param('id').isUUID().withMessage('Invalid user id'),
+  nameRules('firstName', 'First name'),
+  nameRules('lastName', 'Last name'),
+  emailRules(),
+  body('role')
+    .optional()
+    .trim()
+    .isIn(ASSIGNABLE_ROLES)
+    .withMessage(`Role must be one of: ${ASSIGNABLE_ROLES.join(', ')}`),
+  body('isActive').optional().isBoolean().toBoolean(),
+  optionalPasswordRules('password'),
+  body('confirmPassword')
+    .optional({ values: 'falsy' })
+    .custom((value, { req }) => {
+      if (req.body.password && value !== req.body.password) {
+        throw new Error('Password confirmation does not match');
+      }
+      return true;
+    }),
   validate,
 ];
 
@@ -109,6 +142,7 @@ const listUsersValidation = [
 module.exports = {
   setupOwnerValidation,
   createUserValidation,
+  updateUserValidation,
   listUsersValidation,
   loginValidation,
   forgotPasswordValidation,

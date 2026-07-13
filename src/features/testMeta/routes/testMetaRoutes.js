@@ -7,11 +7,11 @@ const {
   metaIdValidation,
 } = require('../validations/testMetaValidation');
 const { authenticate } = require('../../../middleware/auth');
-const { adminOrHigher } = require('../../../middleware/authorization');
+const { adminOrHigher, requireActive } = require('../../../middleware/authorization');
 
 const router = express.Router();
 
-router.use(authenticate, adminOrHigher);
+router.use(authenticate, requireActive, adminOrHigher);
 
 router.get('/types', listMetaValidation, testMetaController.listTestTypes);
 router.post('/types', createMetaValidation, testMetaController.createTestType);

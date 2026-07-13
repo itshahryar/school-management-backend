@@ -37,13 +37,6 @@ const authenticate = async (req, res, next) => {
       return fail(res, { statusCode: 401, message: 'User not found.' });
     }
 
-    if (!user.isActive) {
-      return fail(res, {
-        statusCode: 403,
-        message: 'Account is deactivated.',
-      });
-    }
-
     req.user = user;
     next();
   } catch (error) {

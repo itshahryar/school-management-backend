@@ -7,11 +7,11 @@ const {
   updateContentNodeValidation,
 } = require('../validations/contentNodeValidation');
 const { authenticate } = require('../../../middleware/auth');
-const { adminOrHigher } = require('../../../middleware/authorization');
+const { adminOrHigher, requireActive } = require('../../../middleware/authorization');
 
 const router = express.Router();
 
-router.use(authenticate, adminOrHigher);
+router.use(authenticate, requireActive, adminOrHigher);
 
 router.get('/', listContentNodesValidation, contentNodeController.listContentNodes);
 router.post('/', createContentNodeValidation, contentNodeController.createContentNode);
