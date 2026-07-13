@@ -21,6 +21,34 @@ const generateTest = asyncHandler(async (req, res) => {
   });
 });
 
+const createManualTest = asyncHandler(async (req, res) => {
+  const test = await testService.createManualTest(req.body, req.user.id);
+  return success(res, {
+    statusCode: 201,
+    message: 'Draft question paper saved',
+    data: { test },
+  });
+});
+
+const replaceTestQuestions = asyncHandler(async (req, res) => {
+  const test = await testService.replaceTestQuestions(req.params.id, req.body);
+  return success(res, {
+    message: 'Paper questions updated',
+    data: { test },
+  });
+});
+
+const transitionTest = asyncHandler(async (req, res) => {
+  const test = await testService.transitionTest(req.params.id, req.body.action);
+  return success(res, {
+    message:
+      req.body.action === 'publish'
+        ? 'Question paper published'
+        : 'Question paper finalized',
+    data: { test },
+  });
+});
+
 const updateTest = asyncHandler(async (req, res) => {
   const test = await testService.updateTest(req.params.id, req.body);
   return success(res, {
@@ -38,6 +66,9 @@ module.exports = {
   listTests,
   getTest,
   generateTest,
+  createManualTest,
+  replaceTestQuestions,
+  transitionTest,
   updateTest,
   deleteTest,
 };

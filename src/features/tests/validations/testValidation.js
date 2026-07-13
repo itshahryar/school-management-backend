@@ -45,9 +45,48 @@ const updateTestValidation = [
   body('title').optional().trim().notEmpty().isLength({ max: 200 }),
   body('description').optional({ nullable: true }).trim().isLength({ max: 2000 }),
   body('instructions').optional({ nullable: true }).trim().isLength({ max: 5000 }),
+  body('classId').optional({ nullable: true }).isUUID(),
+  body('subjectId').optional({ nullable: true }).isUUID(),
   body('testTypeId').optional().isUUID(),
-  body('testStatusId').optional().isUUID(),
   body('durationMinutes').optional({ nullable: true }).isInt({ min: 1 }).toInt(),
+  validate,
+];
+
+const createManualTestValidation = [
+  body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 200 }),
+  body('description').optional({ nullable: true }).trim().isLength({ max: 2000 }),
+  body('instructions').optional({ nullable: true }).trim().isLength({ max: 5000 }),
+  body('classId').optional({ nullable: true }).isUUID(),
+  body('subjectId').optional({ nullable: true }).isUUID(),
+  body('testTypeId').isUUID().withMessage('testTypeId is required'),
+  body('durationMinutes').optional({ nullable: true }).isInt({ min: 1 }).toInt(),
+  body('questionIds').optional().isArray(),
+  body('questionIds.*').optional().isUUID(),
+  body('questions').optional().isArray({ min: 1 }),
+  body('questions.*.questionId').optional().isUUID(),
+  body('questions.*.id').optional().isUUID(),
+  body('questions.*.marks').optional({ nullable: true }).isFloat({ gt: 0 }),
+  body('questions.*.sortOrder').optional().isInt({ min: 0 }).toInt(),
+  validate,
+];
+
+const replaceQuestionsValidation = [
+  idParam,
+  body('questionIds').optional().isArray(),
+  body('questionIds.*').optional().isUUID(),
+  body('questions').optional().isArray({ min: 1 }),
+  body('questions.*.questionId').optional().isUUID(),
+  body('questions.*.id').optional().isUUID(),
+  body('questions.*.marks').optional({ nullable: true }).isFloat({ gt: 0 }),
+  body('questions.*.sortOrder').optional().isInt({ min: 0 }).toInt(),
+  validate,
+];
+
+const transitionTestValidation = [
+  idParam,
+  body('action')
+    .isIn(['finalize', 'publish'])
+    .withMessage('action must be finalize or publish'),
   validate,
 ];
 
@@ -56,4 +95,7 @@ module.exports = {
   testIdValidation,
   generateTestValidation,
   updateTestValidation,
+  createManualTestValidation,
+  replaceQuestionsValidation,
+  transitionTestValidation,
 };

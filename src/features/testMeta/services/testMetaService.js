@@ -85,35 +85,71 @@ const testStatusService = createMetaService('testStatus', 'Test status');
 
 /** Ensure default statuses/types exist for paper generation. */
 const ensureDefaultTestMeta = async () => {
-  const [typeCount, statusCount] = await Promise.all([
-    prisma.testType.count(),
-    prisma.testStatus.count(),
-  ]);
+  const defaultTypes = [
+    { name: 'Unit Test', code: 'UNIT', sortOrder: 1 },
+    { name: 'Midterm', code: 'MIDTERM', sortOrder: 2 },
+    { name: 'Final', code: 'FINAL', sortOrder: 3 },
+    { name: 'Practice', code: 'PRACTICE', sortOrder: 4 },
+  ];
 
-  if (typeCount === 0) {
-    await prisma.testType.createMany({
-      data: [
-        { name: 'Unit Test', code: 'UNIT', sortOrder: 1 },
-        { name: 'Midterm', code: 'MIDTERM', sortOrder: 2 },
-        { name: 'Final', code: 'FINAL', sortOrder: 3 },
-        { name: 'Practice', code: 'PRACTICE', sortOrder: 4 },
-      ],
-    });
+  const defaultStatuses = [
+    { name: 'Draft', code: 'DRAFT', sortOrder: 1 },
+    { name: 'Finalized', code: 'FINALIZED', sortOrder: 2 },
+    { name: 'Published', code: 'PUBLISHED', sortOrder: 3 },
+    { name: 'Archived', code: 'ARCHIVED', sortOrder: 4 },
+  ];
+
+  for (const item of defaultTypes) {
+    const byCode = await prisma.testType.findUnique({ where: { code: item.code } });
+    if (byCode) {
+      await prisma.testType.update({
+        where: { id: byCode.id },
+        data: { name: item.name, sortOrder: item.sortOrder, isActive: true },
+      });
+      continue;
+    }
+    const byName = await prisma.testType.findUnique({ where: { name: item.name } });
+    if (byName) {
+      await prisma.testType.update({
+        where: { id: byName.id },
+        data: { code: item.code, sortOrder: item.sortOrder, isActive: true },
+      });
+    } else {
+      await prisma.testType.create({ data: item });
+    }
   }
 
-  if (statusCount === 0) {
-    await prisma.testStatus.createMany({
-      data: [
-        { name: 'Draft', code: 'DRAFT', sortOrder: 1 },
-        { name: 'Generated', code: 'GENERATED', sortOrder: 2 },
-        { name: 'Archived', code: 'ARCHIVED', sortOrder: 3 },
-      ],
-    });
+  for (const item of defaultStatuses) {
+    const byCode = await prisma.testStatus.findUnique({ where: { code: item.code } });
+    if (byCode) {
+      await prisma.testStatus.update({
+        where: { id: byCode.id },
+        data: { name: item.name, sortOrder: item.sortOrder, isActive: true },
+      });
+      continue;
+    }
+    const byName = await prisma.testStatus.findUnique({ where: { name: item.name } });
+    if (byName) {
+      await prisma.testStatus.update({
+        where: { id: byName.id },
+        data: { code: item.code, sortOrder: item.sortOrder, isActive: true },
+      });
+    } else {
+      await prisma.testStatus.create({ data: item });
+    }
   }
+};
+
+const getStatusByCode = async (code) => {
+  await ensureDefaultTestMeta();
+  const status = await prisma.testStatus.findUnique({ where: { code } });
+  if (!status) throw new AppError(`Test status ${code} is missing`, 500);
+  return status;
 };
 
 module.exports = {
   testTypeService,
   testStatusService,
   ensureDefaultTestMeta,
+  getStatusByCode,
 };
