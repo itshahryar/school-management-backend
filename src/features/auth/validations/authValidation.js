@@ -63,6 +63,14 @@ const createUserValidation = [
     .withMessage('Role is required')
     .isIn(ASSIGNABLE_ROLES)
     .withMessage(`Role must be one of: ${ASSIGNABLE_ROLES.join(', ')}`),
+  body('primaryPhone').optional({ nullable: true }).trim().isLength({ max: 30 }),
+  body('secondaryPhone').optional({ nullable: true }).trim().isLength({ max: 30 }),
+  body('primaryPhoneVerified').optional().isBoolean().toBoolean(),
+  body('address').optional({ nullable: true }).trim().isLength({ max: 500 }),
+  body('postalCode').optional({ nullable: true }).trim().isLength({ max: 20 }),
+  body('schoolName').optional({ nullable: true }).trim().isLength({ max: 200 }),
+  body('designation').optional({ nullable: true }).trim().isLength({ max: 120 }),
+  body('nationalId').optional({ nullable: true }).trim().isLength({ max: 50 }),
   validate,
 ];
 
@@ -86,6 +94,14 @@ const updateUserValidation = [
       }
       return true;
     }),
+  body('primaryPhone').optional({ nullable: true }).trim().isLength({ max: 30 }),
+  body('secondaryPhone').optional({ nullable: true }).trim().isLength({ max: 30 }),
+  body('primaryPhoneVerified').optional().isBoolean().toBoolean(),
+  body('address').optional({ nullable: true }).trim().isLength({ max: 500 }),
+  body('postalCode').optional({ nullable: true }).trim().isLength({ max: 20 }),
+  body('schoolName').optional({ nullable: true }).trim().isLength({ max: 200 }),
+  body('designation').optional({ nullable: true }).trim().isLength({ max: 120 }),
+  body('nationalId').optional({ nullable: true }).trim().isLength({ max: 50 }),
   validate,
 ];
 

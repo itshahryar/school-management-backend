@@ -20,13 +20,35 @@ const setupOwner = asyncHandler(async (req, res) => {
 });
 
 const createUser = asyncHandler(async (req, res) => {
-  const { email, password, firstName, lastName, role } = req.body;
+  const {
+    email,
+    password,
+    firstName,
+    lastName,
+    role,
+    primaryPhone,
+    secondaryPhone,
+    primaryPhoneVerified,
+    address,
+    postalCode,
+    schoolName,
+    designation,
+    nationalId,
+  } = req.body;
   const user = await authService.createUser({
     email,
     password,
     firstName,
     lastName,
     role,
+    primaryPhone,
+    secondaryPhone,
+    primaryPhoneVerified,
+    address,
+    postalCode,
+    schoolName,
+    designation,
+    nationalId,
   });
 
   return success(res, {

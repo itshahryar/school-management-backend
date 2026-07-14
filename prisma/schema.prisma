@@ -50,6 +50,14 @@ model User {
   role                   Role
   isActive               Boolean   @default(true)
   emailVerified          Boolean   @default(false)
+  primaryPhone           String?
+  secondaryPhone         String?
+  primaryPhoneVerified   Boolean   @default(false)
+  address                String?
+  postalCode             String?
+  schoolName             String?
+  designation            String?
+  nationalId             String?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   lastLoginAt            DateTime?

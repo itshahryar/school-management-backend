@@ -13,6 +13,14 @@ const USER_PUBLIC_SELECT = {
   role: true,
   isActive: true,
   emailVerified: true,
+  primaryPhone: true,
+  secondaryPhone: true,
+  primaryPhoneVerified: true,
+  address: true,
+  postalCode: true,
+  schoolName: true,
+  designation: true,
+  nationalId: true,
   createdAt: true,
   updatedAt: true,
   lastLoginAt: true,
@@ -54,7 +62,21 @@ const setupOwner = async ({ email, password, firstName, lastName }) => {
 /**
  * Create a user with an assignable role (OWNER only via middleware).
  */
-const createUser = async ({ email, password, firstName, lastName, role }) => {
+const createUser = async ({
+  email,
+  password,
+  firstName,
+  lastName,
+  role,
+  primaryPhone,
+  secondaryPhone,
+  primaryPhoneVerified,
+  address,
+  postalCode,
+  schoolName,
+  designation,
+  nationalId,
+}) => {
   await ensureEmailAvailable(email);
 
   return prisma.user.create({
@@ -64,6 +86,14 @@ const createUser = async ({ email, password, firstName, lastName, role }) => {
       firstName,
       lastName,
       role,
+      primaryPhone: primaryPhone || null,
+      secondaryPhone: secondaryPhone || null,
+      primaryPhoneVerified: Boolean(primaryPhoneVerified),
+      address: address || null,
+      postalCode: postalCode || null,
+      schoolName: schoolName || null,
+      designation: designation || null,
+      nationalId: nationalId || null,
     },
     select: USER_PUBLIC_SELECT,
   });
@@ -284,6 +314,51 @@ const updateUser = async (id, payload) => {
   }
   if (payload.password) {
     data.password = await hashPassword(payload.password);
+  }
+  if (payload.primaryPhone !== undefined) {
+    data.primaryPhone =
+      typeof payload.primaryPhone === 'string'
+        ? payload.primaryPhone.trim() || null
+        : null;
+  }
+  if (payload.secondaryPhone !== undefined) {
+    data.secondaryPhone =
+      typeof payload.secondaryPhone === 'string'
+        ? payload.secondaryPhone.trim() || null
+        : null;
+  }
+  if (payload.primaryPhoneVerified !== undefined) {
+    data.primaryPhoneVerified = Boolean(payload.primaryPhoneVerified);
+  }
+  if (payload.address !== undefined) {
+    data.address =
+      typeof payload.address === 'string'
+        ? payload.address.trim() || null
+        : null;
+  }
+  if (payload.postalCode !== undefined) {
+    data.postalCode =
+      typeof payload.postalCode === 'string'
+        ? payload.postalCode.trim() || null
+        : null;
+  }
+  if (payload.schoolName !== undefined) {
+    data.schoolName =
+      typeof payload.schoolName === 'string'
+        ? payload.schoolName.trim() || null
+        : null;
+  }
+  if (payload.designation !== undefined) {
+    data.designation =
+      typeof payload.designation === 'string'
+        ? payload.designation.trim() || null
+        : null;
+  }
+  if (payload.nationalId !== undefined) {
+    data.nationalId =
+      typeof payload.nationalId === 'string'
+        ? payload.nationalId.trim() || null
+        : null;
   }
 
   if (!Object.keys(data).length) {
