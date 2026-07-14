@@ -232,6 +232,7 @@ const listUsers = async ({
       { email: { contains: term, mode: 'insensitive' } },
       { firstName: { contains: term, mode: 'insensitive' } },
       { lastName: { contains: term, mode: 'insensitive' } },
+      { schoolName: { contains: term, mode: 'insensitive' } },
     ];
   }
 

@@ -27,8 +27,8 @@ enum ContentNodeType {
 
 enum QuestionType {
   MCQ
-  SHORT_ANSWER
-  LONG_ANSWER
+  SHORT_QUESTION
+  LONG_QUESTION
 }
 
 enum Difficulty {
@@ -327,7 +327,7 @@ model TestSource {
   @@map("test_sources")
 }
 
-/// Configurable pick rules, e.g. "5 MEDIUM MCQs", "2 HARD LONG_ANSWER"
+/// Configurable pick rules, e.g. "5 MEDIUM MCQs", "2 HARD LONG_QUESTION"
 model TestGenerationRule {
   id           String       @id @default(uuid())
   testId       String
