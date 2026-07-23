@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const compression = require('compression');
 
 const authRoutes = require('./features/auth/routes/authRoutes');
+const schoolRoutes = require('./features/schools/routes/schoolRoutes');
 const classRoutes = require('./features/classes/routes/classRoutes');
 const subjectRoutes = require('./features/subjects/routes/subjectRoutes');
 const contentNodeRoutes = require('./features/contentNodes/routes/contentNodeRoutes');
@@ -53,6 +54,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/schools', schoolRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/content-nodes', contentNodeRoutes);

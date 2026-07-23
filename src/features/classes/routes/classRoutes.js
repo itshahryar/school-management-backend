@@ -14,6 +14,7 @@ const router = express.Router();
 router.use(authenticate, requireActive, adminOrHigher);
 
 router.get('/', listClassesValidation, classController.listClasses);
+router.get('/catalog', classController.getClassesCatalog);
 router.post('/', createClassValidation, classController.createClass);
 router.get('/:id', classIdValidation, classController.getClass);
 router.patch('/:id', updateClassValidation, classController.updateClass);

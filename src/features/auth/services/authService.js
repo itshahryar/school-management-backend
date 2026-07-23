@@ -4,6 +4,24 @@ const { hashPassword, comparePassword } = require('../../../utils/password');
 const { generateToken } = require('../../../utils/jwt');
 const AppError = require('../../../utils/AppError');
 const { ROLES, ASSIGNABLE_ROLES } = require('../../../constants/roles');
+const { syncUserSchools } = require('../../schools/services/schoolService');
+
+const USER_SCHOOLS_SELECT = {
+  id: true,
+  designation: true,
+  school: {
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      address: true,
+      postalCode: true,
+      primaryPhone: true,
+      secondaryPhone: true,
+      isActive: true,
+    },
+  },
+};
 
 const USER_PUBLIC_SELECT = {
   id: true,
@@ -16,14 +34,14 @@ const USER_PUBLIC_SELECT = {
   primaryPhone: true,
   secondaryPhone: true,
   primaryPhoneVerified: true,
-  address: true,
-  postalCode: true,
-  schoolName: true,
-  designation: true,
   nationalId: true,
   createdAt: true,
   updatedAt: true,
   lastLoginAt: true,
+  schools: {
+    select: USER_SCHOOLS_SELECT,
+    orderBy: [{ school: { name: 'asc' } }],
+  },
 };
 
 const hashResetToken = (token) =>
@@ -71,15 +89,12 @@ const createUser = async ({
   primaryPhone,
   secondaryPhone,
   primaryPhoneVerified,
-  address,
-  postalCode,
-  schoolName,
-  designation,
   nationalId,
+  schoolAssignments,
 }) => {
   await ensureEmailAvailable(email);
 
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email,
       password: await hashPassword(password),
@@ -89,14 +104,20 @@ const createUser = async ({
       primaryPhone: primaryPhone || null,
       secondaryPhone: secondaryPhone || null,
       primaryPhoneVerified: Boolean(primaryPhoneVerified),
-      address: address || null,
-      postalCode: postalCode || null,
-      schoolName: schoolName || null,
-      designation: designation || null,
       nationalId: nationalId || null,
     },
     select: USER_PUBLIC_SELECT,
   });
+
+  if (schoolAssignments?.length) {
+    await syncUserSchools(user.id, schoolAssignments);
+    return prisma.user.findUnique({
+      where: { id: user.id },
+      select: USER_PUBLIC_SELECT,
+    });
+  }
+
+  return user;
 };
 
 const loginUser = async (email, password) => {
@@ -232,7 +253,15 @@ const listUsers = async ({
       { email: { contains: term, mode: 'insensitive' } },
       { firstName: { contains: term, mode: 'insensitive' } },
       { lastName: { contains: term, mode: 'insensitive' } },
-      { schoolName: { contains: term, mode: 'insensitive' } },
+      {
+        schools: {
+          some: {
+            school: {
+              name: { contains: term, mode: 'insensitive' },
+            },
+          },
+        },
+      },
     ];
   }
 
@@ -331,30 +360,6 @@ const updateUser = async (id, payload) => {
   if (payload.primaryPhoneVerified !== undefined) {
     data.primaryPhoneVerified = Boolean(payload.primaryPhoneVerified);
   }
-  if (payload.address !== undefined) {
-    data.address =
-      typeof payload.address === 'string'
-        ? payload.address.trim() || null
-        : null;
-  }
-  if (payload.postalCode !== undefined) {
-    data.postalCode =
-      typeof payload.postalCode === 'string'
-        ? payload.postalCode.trim() || null
-        : null;
-  }
-  if (payload.schoolName !== undefined) {
-    data.schoolName =
-      typeof payload.schoolName === 'string'
-        ? payload.schoolName.trim() || null
-        : null;
-  }
-  if (payload.designation !== undefined) {
-    data.designation =
-      typeof payload.designation === 'string'
-        ? payload.designation.trim() || null
-        : null;
-  }
   if (payload.nationalId !== undefined) {
     data.nationalId =
       typeof payload.nationalId === 'string'
@@ -362,13 +367,23 @@ const updateUser = async (id, payload) => {
         : null;
   }
 
-  if (!Object.keys(data).length) {
+  if (!Object.keys(data).length && payload.schoolAssignments === undefined) {
     throw new AppError('No changes provided', 400);
   }
 
-  return prisma.user.update({
+  if (Object.keys(data).length) {
+    await prisma.user.update({
+      where: { id },
+      data,
+    });
+  }
+
+  if (payload.schoolAssignments !== undefined) {
+    await syncUserSchools(id, payload.schoolAssignments);
+  }
+
+  return prisma.user.findUnique({
     where: { id },
-    data,
     select: USER_PUBLIC_SELECT,
   });
 };

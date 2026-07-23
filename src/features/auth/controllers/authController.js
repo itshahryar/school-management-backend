@@ -29,11 +29,8 @@ const createUser = asyncHandler(async (req, res) => {
     primaryPhone,
     secondaryPhone,
     primaryPhoneVerified,
-    address,
-    postalCode,
-    schoolName,
-    designation,
     nationalId,
+    schoolAssignments,
   } = req.body;
   const user = await authService.createUser({
     email,
@@ -44,11 +41,8 @@ const createUser = asyncHandler(async (req, res) => {
     primaryPhone,
     secondaryPhone,
     primaryPhoneVerified,
-    address,
-    postalCode,
-    schoolName,
-    designation,
     nationalId,
+    schoolAssignments,
   });
 
   return success(res, {

@@ -104,10 +104,37 @@ const deleteClass = async (id) => {
   return { id };
 };
 
+const getClassesCatalog = async () => {
+  const classes = await prisma.class.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      sortOrder: true,
+      isActive: true,
+      subjects: {
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          sortOrder: true,
+          isActive: true,
+        },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      },
+    },
+    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+  });
+
+  return { classes };
+};
+
 module.exports = {
   listClasses,
   getClassById,
   createClass,
   updateClass,
   deleteClass,
+  getClassesCatalog,
 };

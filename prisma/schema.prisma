@@ -53,10 +53,6 @@ model User {
   primaryPhone           String?
   secondaryPhone         String?
   primaryPhoneVerified   Boolean   @default(false)
-  address                String?
-  postalCode             String?
-  schoolName             String?
-  designation            String?
   nationalId             String?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
@@ -64,6 +60,8 @@ model User {
   passwordResetToken     String?
   passwordResetExpiresAt DateTime?
 
+  schools          UserSchool[]    @relation("UserSchoolMembership")
+  createdSchools   School[]        @relation("SchoolCreatedBy")
   createdClasses   Class[]         @relation("ClassCreatedBy")
   createdSubjects  Subject[]       @relation("SubjectCreatedBy")
   createdNodes     ContentNode[]   @relation("ContentNodeCreatedBy")
@@ -74,6 +72,65 @@ model User {
   @@index([role])
   @@index([isActive])
   @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// Schools & assignments (users ↔ schools, schools ↔ global subjects)
+// ─────────────────────────────────────────────
+
+model School {
+  id             String   @id @default(uuid())
+  name           String
+  code           String?  @unique
+  address        String?
+  postalCode     String?
+  primaryPhone   String?
+  secondaryPhone String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?
+
+  createdBy User?           @relation("SchoolCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  members   UserSchool[]
+  subjects  SchoolSubject[]
+
+  @@index([isActive])
+  @@index([name])
+  @@map("schools")
+}
+
+/// Many-to-many: a user can belong to multiple schools; a school can have multiple users.
+model UserSchool {
+  id          String   @id @default(uuid())
+  userId      String
+  schoolId    String
+  /// Role/title at this school (e.g. Principal, Teacher)
+  designation String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User   @relation("UserSchoolMembership", fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, schoolId])
+  @@index([schoolId])
+  @@map("user_schools")
+}
+
+/// Assigns global subjects to a specific school (class → subject pairs stay in global catalog).
+model SchoolSubject {
+  id        String   @id @default(uuid())
+  schoolId  String
+  subjectId String
+  createdAt DateTime @default(now())
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, subjectId])
+  @@index([subjectId])
+  @@map("school_subjects")
 }
 
 // ─────────────────────────────────────────────
@@ -113,10 +170,11 @@ model Subject {
   updatedAt   DateTime @updatedAt
   createdById String?
 
-  class      Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
-  createdBy  User?         @relation("SubjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  class      Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdBy  User?           @relation("SubjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   nodes      ContentNode[]
   tests      Test[]
+  schools    SchoolSubject[]
 
   @@unique([classId, name])
   @@index([classId, isActive, sortOrder])

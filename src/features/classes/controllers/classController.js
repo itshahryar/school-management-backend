@@ -34,10 +34,16 @@ const deleteClass = asyncHandler(async (req, res) => {
   return success(res, { message: 'Class deleted successfully' });
 });
 
+const getClassesCatalog = asyncHandler(async (req, res) => {
+  const result = await classService.getClassesCatalog();
+  return success(res, { data: result });
+});
+
 module.exports = {
   listClasses,
   getClass,
   createClass,
   updateClass,
   deleteClass,
+  getClassesCatalog,
 };
