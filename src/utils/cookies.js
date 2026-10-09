@@ -1,10 +1,13 @@
 /**
  * Cookie configuration for authentication token
  */
+const isProduction = process.env.NODE_ENV === 'production';
+const sameSiteSetting = process.env.COOKIE_SAME_SITE || (isProduction ? 'none' : 'lax');
+
 const cookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  secure: sameSiteSetting === 'none' ? true : isProduction,
+  sameSite: sameSiteSetting,
   maxAge: 24 * 60 * 60 * 1000, // 1 day
   path: '/'
 };
